@@ -1,12 +1,14 @@
 # teraterm_logger
 
-Tera Term を起動して接続したあと、1画面でログ保存先とログファイル名を決めて `logopen` するためのマクロです。
+Esperanto / [日本語](README.ja.md)
 
-## 使い方
+Malgranda makroo por Tera Term, kiu post konektiĝo montras unu fenestron por elekti la dosierujon kaj dosiernomon de la protokolo, poste startigas `logopen`.
 
-### 通常起動で毎回動かす
+## Uzado
 
-次の3ファイルを同じフォルダに置きます。
+### Aŭtomate ruli ĉe normala startigo
+
+Metu la jenajn tri dosierojn en la saman dosierujon.
 
 ```text
 auto_log_prompt.ttl
@@ -14,8 +16,8 @@ log_prompt.ps1
 log_categories.txt
 ```
 
-Tera Term 5 では、相対パス指定のマクロは `%APPDATA%\teraterm5\` から探されます。
-そのため、次の配置にしておくのが一番ラクです。
+En Tera Term 5, makroo kun relativa vojo estas serĉata el `%APPDATA%\teraterm5\`.
+Tial la plej simpla aranĝo estas:
 
 ```text
 %APPDATA%\teraterm5\auto_log_prompt.ttl
@@ -23,47 +25,47 @@ Tera Term 5 では、相対パス指定のマクロは `%APPDATA%\teraterm5\` �
 %APPDATA%\teraterm5\log_categories.txt
 ```
 
-そのうえで `%APPDATA%\teraterm5\TERATERM.INI` の `[Tera Term]` セクションに次を設定します。
+Poste aldonu la jenon al la sekcio `[Tera Term]` en `%APPDATA%\teraterm5\TERATERM.INI`.
 
 ```ini
 StartupMacro=auto_log_prompt.ttl
 HostDialogOnStartup=off
 ```
 
-これで通常どおり Tera Term を起動したときに、このマクロが自動実行されます。
-`HostDialogOnStartup=off` にしているのは、接続ダイアログをこのマクロ側で出すためです。
+Tiam la makroo ruliĝos aŭtomate kiam vi startigas Tera Term normale.
+`HostDialogOnStartup=off` estas uzata ĉar la konekta dialogo estas malfermita de ĉi tiu makroo.
 
-### フルパスで指定する場合
+### Se vi volas uzi plenan vojon
 
 ```ini
 StartupMacro=C:\project\teraterm_logger\auto_log_prompt.ttl
 HostDialogOnStartup=off
 ```
 
-この場合も、`auto_log_prompt.ttl` と同じフォルダに `log_prompt.ps1` と `log_categories.txt` を置いてください。
+Ankaŭ en ĉi tiu kazo metu `log_prompt.ps1` kaj `log_categories.txt` en la saman dosierujon kiel `auto_log_prompt.ttl`.
 
-### コマンドラインで試す場合
+### Provi per komandlinio
 
 ```bat
 ttermpro.exe /M=C:\project\teraterm_logger\auto_log_prompt.ttl
 ```
 
-## 動き
+## Konduto
 
-- 未接続なら Tera Term の新規接続ダイアログを出します。
-- 接続できたら、ログ設定画面を1つだけ出します。
-- ログ設定画面では、保存先フォルダ、サブ要素、ログファイル名を指定できます。
-- ログファイル名の初期値は `yyyyMMdd_保存先フォルダ名_サブ要素.log` です。
-- サブ要素を変えると、ログファイル名も自動で更新されます。
-- ログファイル名は手動編集できます。
-- 既に同名ファイルがある場合、初期値には `_001`, `_002` のような連番を付けます。
-- OK すると `logopen` でログ取得を開始します。
-- Cancel した場合、ログなしでそのまま終了します。
+- Se Tera Term ankoraŭ ne estas konektita, ĝi malfermas la dialogon por nova konekto.
+- Post konektiĝo, ĝi montras unu fenestron por agordi la protokolon.
+- En tiu fenestro vi povas elekti dosierujon, subelementon kaj dosiernomon.
+- La komenca dosiernomo estas `yyyyMMdd_dosierujnomo_subelemento.log`.
+- Kiam vi ŝanĝas la subelementon, la dosiernomo aŭtomate refreŝiĝas.
+- La dosiernomo ankaŭ povas esti mane redaktita.
+- Se samnoma dosiero jam ekzistas, la komenca nomo ricevas sufikson kiel `_001` aŭ `_002`.
+- Premante OK, la makroo startigas protokoladon per `logopen`.
+- Premante Cancel, la makroo finiĝas sen protokolado.
 
-## サブ要素の編集
+## Redakti subelementojn
 
-ドロップダウンの候補は `log_categories.txt` で管理しています。
-1行に1候補を書いてください。
+La elektoj en la falmenuo estas administrataj per `log_categories.txt`.
+Skribu unu elekton en ĉiu linio.
 
 ```text
 テスト
@@ -75,10 +77,10 @@ ttermpro.exe /M=C:\project\teraterm_logger\auto_log_prompt.ttl
 その他
 ```
 
-## メモ
+## Notoj
 
-`logopen` は通常のテキストログとして開始し、ログダイアログは隠します。
-マクロ自体はログ開始後に終了しますが、Tera Term 側のログ取得はセッション終了まで続きます。
+`logopen` startas normalan tekstan protokolon kaj kaŝas la protokolan dialogon.
+La makroo mem finiĝas post startigo de protokolado, sed Tera Term daŭre konservas la protokolon ĝis la seanco finiĝas.
 
-Tera Term は `ttermpro.exe` と同じフォルダに `portable.ini` がある場合、ポータブル版として動き、設定ファイルの保存先も実行ファイル側になります。
-ただし通常の `C:\Program Files\...` 配下は書き込み権限で詰まりやすいので、このマクロだけを自動実行したい場合は `%APPDATA%\teraterm5\` 配下の利用を推奨します。
+Se `portable.ini` troviĝas en la sama dosierujo kiel `ttermpro.exe`, Tera Term funkcias kiel portebla versio, kaj ĝiaj agordaj dosieroj estas konservataj ĉe la ekzekutebla dosiero.
+Tamen, en kutima instalado sub `C:\Program Files\...`, skribpermesoj ofte kaŭzas ĝenojn, do por ĉi tiu makroo rekomendindas uzi `%APPDATA%\teraterm5\`.
