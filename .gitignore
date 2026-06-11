@@ -1,0 +1,17 @@
+# Runtime logs
+*.log
+*.log.*
+
+# Tera Term generated files
+*.ttl.bak
+*.ttl~
+
+# Local temp files
+*.tmp
+*.temp
+Thumbs.db
+Desktop.ini
+
+# Editor folders
+.vscode/
+.idea/

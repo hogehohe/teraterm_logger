@@ -1,0 +1,72 @@
+; Tera Term startup macro that prompts for a log file after connecting.
+; Install by setting StartupMacro=auto_log_prompt.ttl in TERATERM.INI, or start
+; Tera Term with: TTERMPRO /M=auto_log_prompt.ttl
+
+testlink
+if result <> 2 then
+  ; Force the New Connection dialog for normal interactive startup.
+  connect '/ES'
+endif
+
+if result <> 2 then
+  ; The user likely cancelled the connection dialog.
+  end
+endif
+
+getenv 'TEMP' temp_dir
+getenv 'USERPROFILE' user_profile
+strlen user_profile
+if result = 0 then
+  default_dir = temp_dir
+else
+  sprintf2 default_dir '%s\Documents' user_profile
+endif
+
+getdir macro_dir
+sprintf2 helper_path '%s\log_prompt.ps1' macro_dir
+sprintf2 categories_path '%s\log_categories.txt' macro_dir
+
+gettime timestamp '%Y%m%d_%H%M%S'
+sprintf2 chooser_result '%s\teraterm_logger_%s.txt' temp_dir timestamp
+
+sprintf2 chooser_cmd 'powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "%s" -OutputPath "%s" -DefaultRoot "%s" -CategoriesPath "%s"' helper_path chooser_result default_dir categories_path
+exec chooser_cmd 'show' 1
+if result <> 0 then
+  if result <> 2 then
+    sprintf2 error_msg 'Log prompt failed. Check helper file:%s' helper_path
+    messagebox error_msg 'Tera Term Auto Logger'
+  endif
+  filedelete chooser_result
+  end
+endif
+
+filesearch chooser_result
+if result = 0 then
+  end
+endif
+
+fileopen result_handle chooser_result 0 1
+if result_handle = -1 then
+  messagebox 'Could not read log prompt result.' 'Tera Term Auto Logger'
+  end
+endif
+
+filereadln result_handle log_path
+fileclose result_handle
+filedelete chooser_result
+
+strlen log_path
+if result = 0 then
+  end
+endif
+
+; binary=0, append=0, plain=0, timestamp=0, hide-dialog=1,
+; include-screen-buffer=1, timestamp-type=0(local time)
+logopen log_path 0 0 0 0 1 1 0
+if result <> 0 then
+  sprintf2 error_msg 'Could not start logging:%s' log_path
+  messagebox error_msg 'Tera Term Auto Logger'
+  end
+endif
+
+end
