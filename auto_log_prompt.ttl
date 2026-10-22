@@ -1,15 +1,34 @@
 ; Tera Term 5 resident logger and visible, bounded procedure runner.
 ; Device commands ONLY pass through sendln to this linked Tera Term window.
 ; The PowerShell helper allocates paths and publishes data, never connects to hosts.
-; Keep this macro running while working manually or handing a range to AI.
+; Keep this macro running while working manually or handing a range to Codex CLI.
 
 testlink
-if result <> 2 then
+if result = 0 then
+  ; Standalone macro launch: create a Tera Term window first.
   connect '/ES'
+elseif result = 1 then
+  ; A startup macro is already linked. Request File > New connection directly;
+  ; reconnecting through connect '/ES' can leave startup waiting without a dialog.
+  showtt 1
+  callmenu 50110
 endif
-if result <> 2 then
-  end
-endif
+; Wait for the user's connection, including a later manual connection after
+; cancelling the dialog. Recheck the link on a timer so an early event is safe.
+timeout = 1
+mtimeout = 0
+while 1
+  testlink
+  if result = 0 then
+    end
+  endif
+  if result = 2 then
+    break
+  endif
+  waitevent 1 or 2 or 8
+endwhile
+timeout = 0
+mtimeout = 0
 ; Keep the shared work surface visible, including standalone macro launches.
 showtt 1
 
@@ -287,11 +306,11 @@ for step_index 0 step_count-1
   state = 'running'
   status_message = step_labels[step_index]
   call write_status
-  sprintf2 current_title '[AI step %d] %s' current_step plan_label
+  sprintf2 current_title '[Codex CLI step %d] %s' current_step plan_label
   settitle current_title
   call record_event
   ; The command is visible locally even when the host has echo disabled.
-  sprintf2 command_marker '[AI command step %d] %s' current_step step_commands[step_index]
+  sprintf2 command_marker '[Codex CLI command step %d] %s' current_step step_commands[step_index]
   ; With plain=0, Tera Term logs this local display as well as host output.
   dispstr command_marker #13#10
 

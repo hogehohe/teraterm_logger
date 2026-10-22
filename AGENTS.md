@@ -1,8 +1,11 @@
-# Working through the user's Tera Term
+# Using Codex CLI with the user's Tera Term
+
+Codex CLI is the procedure operator described by this project. It prepares a
+plan and calls teraterm_logger.ps1; the logger does not install or start Codex CLI.
 
 When asked to execute a procedure on a device through this project, use the
 existing visible Tera Term session and the local teraterm_logger.ps1 interface.
-Read README.ja.md and docs/ai-workflow.md first. Device commands are sent by the
+Read README.ja.md and docs/codex-cli-workflow.md first. Device commands are sent by the
 resident Tera Term macro; do not substitute another SSH or serial connection.
 
 - List sessions and identify the intended host and log. Require an exact session

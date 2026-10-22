@@ -59,7 +59,18 @@ function Wait-Until([scriptblock]$Condition, [string]$Description, [int]$Seconds
 function Read-WireStatus([string]$SessionDirectory) {
     $path = Join-Path $SessionDirectory 'status.txt'
     if (-not (Test-Path -LiteralPath $path)) { return $null }
-    try { $lines = [System.IO.File]::ReadAllLines($path, $utf8) } catch { return $null }
+    try {
+        # Match the CLI reader's sharing mode so polling never blocks the macro's
+        # filecreate status update. ReadAllLines uses FileShare.Read instead.
+        $stream = [System.IO.File]::Open($path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read,
+            ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
+        try {
+            $reader = [System.IO.StreamReader]::new($stream, $utf8, $false)
+            try { $lines = @($reader.ReadToEnd() -split '\r?\n') } finally { $reader.Dispose() }
+        }
+        finally { $stream.Dispose() }
+    }
+    catch { return $null }
     if ($lines.Count -lt 8 -or $lines[0] -ne '1' -or $lines[7] -ne 'END') { return $null }
     [pscustomobject]@{
         State = $lines[1]; RunId = $lines[2]; Name = $lines[3]
