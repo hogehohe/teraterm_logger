@@ -11,7 +11,7 @@
 
 対象はWindows / Tera Term 5 / Windows PowerShell 5.1です。
 
-設置後は普段どおりTera Termを開いて接続・ログインします。別途、ユーザーがこのリポジトリのフォルダでCodex CLIを起動し、手順書を示して次のように頼みます。
+設置後は下記の起動用ショートカットからTera Termを開き、普段どおり接続・ログインします。別途、ユーザーがこのリポジトリのフォルダでCodex CLIを起動し、手順書を示して次のように頼みます。
 
 > この手順書の2から3まで、このTera Termで実行して。3が終わったら止めて、自分に戻して。
 
@@ -37,14 +37,30 @@ teraterm_logger.ps1
 TeratermLogger.psm1
 ```
 
-Tera Termの起動マクロとして使う場合、自分が使う`TERATERM.INI`の`[Tera Term]`セクションに設定します。通常のTera Term 5では`%APPDATA%\teraterm5\TERATERM.INI`です。ポータブル版や`/F=`で設定ファイルを指定している場合は、その設定ファイルを使ってください。
+### 推奨：マクロを起動するショートカットを使う
+
+次の内容をリンク先にしたWindowsのショートカットを作成し、普段の起動に使います。Tera Termのインストール先とマクロの配置先は、実際の場所に合わせてください。
+
+```bat
+"C:\Program Files\teraterm5\ttpmacro.exe" /V "C:\tools\teraterm_logger\auto_log_prompt.ttl"
+```
+
+マクロを先に起動し、そのマクロがTera Termを開きます。毎回ロガーを入口にするため、`TERATERM.INI`を編集せずに自動ログを使えます。`/V`はマクロの制御ウィンドウを隠す指定です。Tera Termの操作画面と「新しい接続」画面は表示されます。
+
+タスクバーから起動する場合は、このショートカットをピン留めしてください。ショートカットのアイコンは、Tera Term本体の`ttermpro.exe`から選べます。
+
+接続・ログインは普段どおりTera Termで行います。接続画面をキャンセルした場合もマクロは待機するので、「ファイル」→「新しい接続」から接続できます。接続が完了すると自動でログ取得を始めます。
+
+### Tera Term本体から起動する場合（任意）
+
+`ttermpro.exe`から起動したい場合は、自分が使う`TERATERM.INI`の`[Tera Term]`セクションに設定します。通常のTera Term 5では`%APPDATA%\teraterm5\TERATERM.INI`です。ポータブル版や`/F=`で設定ファイルを指定している場合は、その設定ファイルを使ってください。
 
 ```ini
 StartupMacro=C:\tools\teraterm_logger\auto_log_prompt.ttl
 HostDialogOnStartup=on
 ```
 
-未接続のときはマクロから「新しい接続」ダイアログを開きます。接続・ログインは普段どおりTera Termで行います。ダイアログをキャンセルした場合もマクロは待機するので、「ファイル」→「新しい接続」から接続できます。接続が完了すると自動でログ取得を始めます。まず試すだけなら、設定ファイルを編集せず次のように起動できます。実際のインストール先とマクロの配置先に合わせてください。
+この設定で起動したマクロも、未接続のときは「新しい接続」画面を開きます。本体のコマンドラインでマクロを指定する場合は、次のように起動できます。
 
 ```bat
 "C:\Program Files\teraterm5\ttermpro.exe" /M="C:\tools\teraterm_logger\auto_log_prompt.ttl"

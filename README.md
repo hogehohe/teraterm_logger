@@ -6,7 +6,7 @@ Esperanto / [日本語](README.ja.md)
 
 Por Windows, Tera Term 5 kaj Windows PowerShell 5.1.
 
-Post instalado, la uzanto malfermas Tera Term, konektiĝas kaj ensalutas kiel kutime. Aparte, la uzanto lanĉas Codex CLI en la dosierujo de ĉi tiu deponejo kaj donas al ĝi la proceduron kaj petitan intervalon, ekzemple paŝojn 2 ĝis 3 en tiu Tera Term-fenestro. Codex CLI kontrolas la celan seancon, preparas la JSON-planon, registras la elektitan intervalon per `teraterm_logger.ps1` kaj raportas la progreson. La uzanto ne devas mane verki JSON.
+Post instalado, la uzanto malfermas Tera Term per la lanĉa ŝparvojo priskribita sube, konektiĝas kaj ensalutas kiel kutime. Aparte, la uzanto lanĉas Codex CLI en la dosierujo de ĉi tiu deponejo kaj donas al ĝi la proceduron kaj petitan intervalon, ekzemple paŝojn 2 ĝis 3 en tiu Tera Term-fenestro. Codex CLI kontrolas la celan seancon, preparas la JSON-planon, registras la elektitan intervalon per `teraterm_logger.ps1` kaj raportas la progreson. La uzanto ne devas mane verki JSON.
 
 | Partoprenanto | Rolo |
 | --- | --- |
@@ -28,20 +28,38 @@ teraterm_logger.ps1
 TeratermLogger.psm1
 ```
 
-En la sekcio `[Tera Term]` de via `TERATERM.INI`, agordu:
+### Rekomendite: lanĉa ŝparvojo al la makroo
+
+Kreu Windows-ŝparvojon kun la jena celo kaj uzu ĝin por ordinara lanĉo. Adaptu la lokojn al via instalado de Tera Term kaj la dosierujo de la makroo.
+
+```bat
+"C:\Program Files\teraterm5\ttpmacro.exe" /V "C:\tools\teraterm_logger\auto_log_prompt.ttl"
+```
+
+Ĉi tiu maniero unue lanĉas la protokolan makroon, kiu poste malfermas Tera Term. La makroo estas la enirejo ĉe ĉiu lanĉo; ne necesas ŝanĝi `TERATERM.INI`. `/V` kaŝas nur la kontrolfenestron de la makroo. La terminalo kaj la konekta dialogo de Tera Term restas videblaj.
+
+Por lanĉi de la taskobreto, alpinglu ĉi tiun ŝparvojon. Vi povas elekti ĝian piktogramon el `ttermpro.exe`.
+
+Konektiĝu kaj ensalutu kiel kutime en Tera Term. Post nuligo de la konekta dialogo la makroo plu atendas; vi povas konektiĝi per File > New connection. Protokolado komenciĝas aŭtomate post konekto.
+
+### Nedevige: lanĉo per la ĉefa programo Tera Term
+
+Por lanĉi rekte per `ttermpro.exe`, agordu la sekcion `[Tera Term]` de via `TERATERM.INI`:
 
 ```ini
 StartupMacro=C:\tools\teraterm_logger\auto_log_prompt.ttl
 HostDialogOnStartup=on
 ```
 
-La ordinara loko por Tera Term 5 estas `%APPDATA%\teraterm5\TERATERM.INI`. Por portebla instalado aŭ aparta agorddosiero, uzu ties efektivan lokon. La makroo malfermas la konektan dialogon se necese. Post nuligo de la dialogo ĝi plu atendas; vi povas konektiĝi per la menuo File > New connection. Protokolado komenciĝas aŭtomate post konekto. Konektiĝu kaj ensalutu kiel kutime; lasu la makroon funkcii dum la seanco.
+La ordinara loko por Tera Term 5 estas `%APPDATA%\teraterm5\TERATERM.INI`. Por portebla instalado aŭ aparta agorddosiero, uzu ties efektivan lokon. La makroo lanĉita per ĉi tiu agordo ankaŭ malfermas la konektan dialogon se necese.
 
-Por provi sen ŝanĝi la agorddosieron:
+Por specifi la makroon rekte en la komandlinio de la ĉefa programo:
 
 ```bat
 "C:\Program Files\teraterm5\ttermpro.exe" /M="C:\tools\teraterm_logger\auto_log_prompt.ttl"
 ```
+
+Lasu la makroon funkcii dum la seanco. Se ĝi estas haltigita, ĝi ne plu akceptas petojn de Codex CLI.
 
 ## Aŭtomataj protokoloj
 
