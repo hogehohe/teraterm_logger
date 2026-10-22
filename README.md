@@ -2,85 +2,81 @@
 
 Esperanto / [日本語](README.ja.md)
 
-Malgranda makroo por Tera Term, kiu post konektiĝo montras unu fenestron por elekti la dosierujon kaj dosiernomon de la protokolo, poste startigas `logopen`.
+**Aŭtomata protokolado kaj kunlaboro kun AI en la sama videbla Tera Term-fenestro.** La uzanto plu laboras en Tera Term; AI povas sendi nur eksplicite elektitan intervalon de paŝoj kaj poste redoni la regadon.
 
-## Uzado
+Por Windows, Tera Term 5 kaj Windows PowerShell 5.1.
 
-### Aŭtomate ruli ĉe normala startigo
+Post instalado, la uzanto nur malfermas Tera Term, konektiĝas kaj petas AI ruli ekzemple paŝojn 2 ĝis 3 en tiu fenestro. AI kontrolas la celan seancon, preparas la JSON-planon, registras la elektitan intervalon kaj raportas la progreson. La sekvaj komandliniaj ekzemploj estas la interfaco uzata de AI.
 
-Metu la jenajn tri dosierojn en la saman dosierujon.
+## Instalado
+
+Metu ĉi tiujn dosierojn en la saman dosierujon:
 
 ```text
 auto_log_prompt.ttl
-log_prompt.ps1
-log_categories.txt
+teraterm_logger.ps1
+TeratermLogger.psm1
 ```
 
-En Tera Term 5, makroo kun relativa vojo estas serĉata el `%APPDATA%\teraterm5\`.
-Tial la plej simpla aranĝo estas:
-
-```text
-%APPDATA%\teraterm5\auto_log_prompt.ttl
-%APPDATA%\teraterm5\log_prompt.ps1
-%APPDATA%\teraterm5\log_categories.txt
-```
-
-Poste aldonu la jenon al la sekcio `[Tera Term]` en `%APPDATA%\teraterm5\TERATERM.INI`.
+En la sekcio `[Tera Term]` de via `TERATERM.INI`, agordu:
 
 ```ini
-StartupMacro=auto_log_prompt.ttl
+StartupMacro=C:\tools\teraterm_logger\auto_log_prompt.ttl
 HostDialogOnStartup=off
 ```
 
-Tiam la makroo ruliĝos aŭtomate kiam vi startigas Tera Term normale.
-`HostDialogOnStartup=off` estas uzata ĉar la konekta dialogo estas malfermita de ĉi tiu makroo.
+La ordinara loko por Tera Term 5 estas `%APPDATA%\teraterm5\TERATERM.INI`. Por portebla instalado aŭ aparta agorddosiero, uzu ties efektivan lokon. La makroo malfermas la konektan dialogon se necese. Konektiĝu kaj ensalutu kiel kutime; lasu la makroon funkcii dum la seanco.
 
-### Se vi volas uzi plenan vojon
-
-```ini
-StartupMacro=C:\project\teraterm_logger\auto_log_prompt.ttl
-HostDialogOnStartup=off
-```
-
-Ankaŭ en ĉi tiu kazo metu `log_prompt.ps1` kaj `log_categories.txt` en la saman dosierujon kiel `auto_log_prompt.ttl`.
-
-### Provi per komandlinio
+Por provi sen ŝanĝi la agorddosieron:
 
 ```bat
-ttermpro.exe /M=C:\project\teraterm_logger\auto_log_prompt.ttl
+"C:\Program Files\teraterm5\ttermpro.exe" /M="C:\tools\teraterm_logger\auto_log_prompt.ttl"
 ```
 
-## Konduto
+## Aŭtomataj protokoloj
 
-- Se Tera Term ankoraŭ ne estas konektita, ĝi malfermas la dialogon por nova konekto.
-- Post konektiĝo, ĝi montras unu fenestron por agordi la protokolon.
-- En tiu fenestro vi povas elekti dosierujon, subelementon kaj dosiernomon.
-- La komenca dosiernomo estas `yyyyMMdd_dosierujnomo_subelemento.log`.
-- Kiam vi ŝanĝas la subelementon, la dosiernomo aŭtomate refreŝiĝas.
-- La dosiernomo ankaŭ povas esti mane redaktita.
-- Se samnoma dosiero jam ekzistas, la komenca nomo ricevas sufikson kiel `_001` aŭ `_002`.
-- Premante OK, la makroo startigas protokoladon per `logopen`.
-- Premante Cancel, la makroo finiĝas sen protokolado.
-
-## Redakti subelementojn
-
-La elektoj en la falmenuo estas administrataj per `log_categories.txt`.
-Skribu unu elekton en ĉiu linio.
+Ne necesas elekti dosiernomon aŭ konservolokon ĉe ĉiu konekto. La defaŭlta loko estas:
 
 ```text
-テスト
-検証
-インストール
-調査
-障害対応
-作業
-その他
+Documents\TeraTermLogs\yyyy-MM-dd\timestamp_host_unique.log
 ```
 
-## Notoj
+La vera Windows-dosierujo Documents estas uzata, ankaŭ kiam ĝi estas alilokigita. Por alia loko, kreu `%LOCALAPPDATA%\teraterm_logger\config.json` antaŭ la sekva seanco:
 
-`logopen` startas normalan tekstan protokolon kaj kaŝas la protokolan dialogon.
-La makroo mem finiĝas post startigo de protokolado, sed Tera Term daŭre konservas la protokolon ĝis la seanco finiĝas.
+```json
+{ "LogRoot": "D:\\TerminalLogs" }
+```
 
-Se `portable.ini` troviĝas en la sama dosierujo kiel `ttermpro.exe`, Tera Term funkcias kiel portebla versio, kaj ĝiaj agordaj dosieroj estas konservataj ĉe la ekzekutebla dosiero.
-Tamen, en kutima instalado sub `C:\Program Files\...`, skribpermesoj ofte kaŭzas ĝenojn, do por ĉi tiu makroo rekomendindas uzi `%APPDATA%\teraterm5\`.
+Agordoj, seancostatoj kaj paŝhistorio troviĝas en `%LOCALAPPDATA%\teraterm_logger`. La mediovariablo `TERATERM_LOGGER_HOME` povas ŝanĝi tiun lokon; uzu la saman valoron por Tera Term kaj la komandlinia ilo. La ilo ankaŭ akceptas `-StateRoot`.
+
+## Ruli elektitajn paŝojn
+
+Unue listigu la seancojn kaj kontrolu la celon:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\teraterm_logger.ps1 -Action Sessions
+```
+
+Post kontrolo de la plano, rulu nur la petitan intervalon. Ambaŭ limoj estas devigaj:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\teraterm_logger.ps1 -Action Run -SessionId <session-id> -PlanPath .\examples\demo-plan.json -FromStep 2 -ToStep 3
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\teraterm_logger.ps1 -Action Status -SessionId <session-id>
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\teraterm_logger.ps1 -Action Stop -SessionId <session-id>
+```
+
+Anstataŭigu `<session-id>` per la efektiva ID. La ekzempla plano estas nur por simulita konekto: adaptu ĝiajn komandojn kaj la atendatan terminalan inviton antaŭ uzo kun vera aparato.
+
+`Run` registras peton; `Status` montras ĝian progreson. La loĝanta makroo sendas la komandojn per `sendln` en la jam malfermita Tera Term. Ĝi ne uzas apartan SSH-konekton. La fenestra titolo, videblaj markiloj kaj loka historio helpas sekvi la transdonon inter homo kaj AI.
+
+`Stop` haltigas antaŭ la sekva paŝo; ĝi ne interrompas jam senditan komandon. Post tempolimo aŭ malkonekto, ne pluaj komandoj estas sendataj, kaj la rezulto de la nuna paŝo restas necerta. Ne estas aŭtomata ripeto. Kongruo kun `expect` nur markas la finon de respondo, ne pruvas sukceson. Ne tajpu samtempe dum AI rulas komandojn.
+
+Post tempolimo aŭ eraro, nova `Run` estas rifuzata ĝis kontrolo de la rezulto kaj nuna terminala invito. Poste AI povas konfirmi la kontrolon per:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\teraterm_logger.ps1 -Action Acknowledge -SessionId <session-id>
+```
+
+Tio revenigas la seancon al atendado sen resendi komandon; la sama protokolo daŭras. Poste eblas eksplicite elekti novan intervalon. `Acknowledge` ne funkcias dum peto atendas aŭ ruliĝas. Malkonektita seanco ne povas esti reaktivigita aŭ reludita; post rekonekto komencu novan protokolan seancon.
+
+La [japana laborflua gvidilo](docs/ai-workflow.md) klarigas la planformaton kaj transdonon. La malnova `log_prompt.ps1` kaj `log_categories.txt` restas por la antaŭa dialoga maniero; la nova startmakroo ne uzas ilin.

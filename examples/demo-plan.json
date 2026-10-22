@@ -1,0 +1,33 @@
+{
+  "name": "Mock terminal demonstration",
+  "steps": [
+    {
+      "id": 1,
+      "label": "Demo step 1: identify the mock session",
+      "command": "echo DEMO_STEP_1",
+      "expect": "(?m)^mock-device# $",
+      "timeoutSeconds": 10
+    },
+    {
+      "id": 2,
+      "label": "Demo step 2: first delegated command",
+      "command": "echo DEMO_STEP_2",
+      "expect": "(?m)^mock-device# $",
+      "timeoutSeconds": 10
+    },
+    {
+      "id": 3,
+      "label": "Demo step 3: hand back after this command",
+      "command": "echo DEMO_STEP_3",
+      "expect": "(?m)^mock-device# $",
+      "timeoutSeconds": 10
+    },
+    {
+      "id": 4,
+      "label": "Demo step 4: outside a requested 2-to-3 range",
+      "command": "echo DEMO_STEP_4",
+      "expect": "(?m)^mock-device# $",
+      "timeoutSeconds": 10
+    }
+  ]
+}
