@@ -1,94 +1,451 @@
-; Tera Term startup macro that prompts for a log file after connecting.
-; Install by setting StartupMacro=auto_log_prompt.ttl in TERATERM.INI, or start
-; Tera Term with: TTERMPRO /M=auto_log_prompt.ttl
+; Tera Term 5 resident logger and visible, bounded procedure runner.
+; Device commands ONLY pass through sendln to this linked Tera Term window.
+; The PowerShell helper allocates paths and publishes data, never connects to hosts.
+; Keep this macro running while working manually or handing a range to AI.
 
 testlink
 if result <> 2 then
-  ; Force the New Connection dialog for normal interactive startup.
   connect '/ES'
 endif
-
 if result <> 2 then
-  ; The user likely cancelled the connection dialog.
+  end
+endif
+; Keep the shared work surface visible, including standalone macro launches.
+showtt 1
+
+gethostname destination
+getenv 'TEMP' temp_dir
+getdir macro_dir
+sprintf2 helper_path '%s\teraterm_logger.ps1' macro_dir
+gettime timestamp '%Y%m%d_%H%M%S'
+bootstrap_ready = 0
+for attempt 0 999
+  sprintf2 bootstrap_dir '%s\teraterm_logger_%s_%d' temp_dir timestamp attempt
+  foldercreate bootstrap_dir
+  if result = 0 then
+    bootstrap_ready = 1
+    break
+  endif
+next
+if bootstrap_ready = 0 then
+  messagebox 'Could not reserve the logger initialization folder.' 'Tera Term Logger'
   end
 endif
 
-getenv 'TEMP' temp_dir
-getenv 'USERPROFILE' user_profile
-strlen user_profile
-if result = 0 then
-  default_dir = temp_dir
-else
-  sprintf2 default_dir '%s\Documents' user_profile
+sprintf2 bootstrap_path '%s\init.txt' bootstrap_dir
+sprintf2 bootstrap_result '%s.result' bootstrap_path
+filecreate bootstrap_handle bootstrap_path
+if bootstrap_handle = -1 then
+  call cleanup_bootstrap
+  messagebox 'Could not write the logger initialization request.' 'Tera Term Logger'
+  end
+endif
+filewriteln bootstrap_handle destination
+fileclose bootstrap_handle
+sprintf2 helper_command 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%s" -Action Initialize -RequestPath "%s"' helper_path bootstrap_path
+exec helper_command 'hide' 1
+if result <> 0 then
+  call cleanup_bootstrap
+  messagebox 'Automatic log initialization failed. Check teraterm_logger.ps1 and configuration.' 'Tera Term Logger'
+  end
 endif
 
-getdir macro_dir
-sprintf2 helper_path '%s\log_prompt.ps1' macro_dir
-sprintf2 categories_path '%s\log_categories.txt' macro_dir
+fileopen bootstrap_handle bootstrap_result 0 1
+if bootstrap_handle = -1 then
+  call cleanup_bootstrap
+  messagebox 'Logger initialization did not return its result.' 'Tera Term Logger'
+  end
+endif
+filereadln bootstrap_handle log_path
+bootstrap_read_error = result
+filereadln bootstrap_handle session_dir
+bootstrap_read_error = bootstrap_read_error + result
+fileclose bootstrap_handle
+call cleanup_bootstrap
+strlen log_path
+if result = 0 then
+  bootstrap_read_error = 1
+endif
+strlen session_dir
+if result = 0 then
+  bootstrap_read_error = 1
+endif
+if bootstrap_read_error <> 0 then
+  messagebox 'Logger initialization returned an incomplete result.' 'Tera Term Logger'
+  end
+endif
 
-gettime timestamp '%Y%m%d_%H%M%S'
-chooser_ready = 0
+; Append to the empty file atomically reserved by the helper. Include visible
+; scrollback so connecting and authenticating before initialization is retained.
+logopen log_path 0 1 0 0 1 1 0
+if result <> 0 then
+  messagebox 'Could not start the automatic Tera Term log.' 'Tera Term Logger'
+  end
+endif
+logautoclosemode 1
+regexoption 'SYNTAX_RUBY' 'ENCODING_UTF8'
 
-; Atomically reserve a separate result folder for each macro instance.
-for attempt 0 999
-  sprintf2 chooser_dir '%s\teraterm_logger_%s_%d' temp_dir timestamp attempt
-  foldercreate chooser_dir
+sprintf2 request_path '%s\request.ready' session_dir
+sprintf2 acknowledge_path '%s\ack.ready' session_dir
+sprintf2 status_path '%s\status.txt' session_dir
+sprintf2 events_path '%s\events.tsv' session_dir
+strdim step_labels 100
+strdim step_commands 100
+strdim step_patterns 100
+intdim step_ids 100
+intdim step_timeouts 100
+
+run_id = ''
+plan_label = ''
+stop_path = ''
+current_step = 0
+last_completed = 0
+state = 'idle'
+status_message = 'Manual control. Automatic logging is active.'
+call write_status
+call manual_title
+call record_event
+
+:resident_loop
+testlink
+if result <> 2 then
+  goto session_disconnected
+endif
+; Acknowledgment only re-arms a halted session after the operator inspected
+; its terminal. It never queues, retries, or sends a device command.
+filesearch acknowledge_path
+if result = 1 then
+  acknowledge_allowed = 0
+  acknowledge_valid = 0
+  fileopen acknowledge_handle acknowledge_path 0 1
+  if acknowledge_handle <> -1 then
+    ; The helper publishes this line atomically. Bind it to the result the
+    ; operator inspected; empty is allowed when an invalid request had no ID.
+    filereadln acknowledge_handle acknowledge_run_id
+    if result = 0 then
+      acknowledge_valid = 1
+    endif
+    fileclose acknowledge_handle
+    strcompare acknowledge_run_id run_id
+    if result <> 0 then
+      acknowledge_valid = 0
+    endif
+  endif
+  filesearch request_path
   if result = 0 then
-    chooser_ready = 1
+    if acknowledge_valid = 1 then
+      strcompare state 'timeout'
+      if result = 0 then
+        acknowledge_allowed = 1
+      endif
+      strcompare state 'error'
+      if result = 0 then
+        acknowledge_allowed = 1
+      endif
+    endif
+  endif
+  ; Discard stray acknowledgments so they cannot acknowledge a later failure.
+  filedelete acknowledge_path
+  if acknowledge_allowed = 1 then
+    state = 'idle'
+    status_message = 'Operator acknowledged the previous result. Manual control.'
+    call write_status
+    call manual_title
+    call record_event
+  endif
+endif
+filesearch request_path
+if result = 0 then
+  mpause 200
+  goto resident_loop
+endif
+
+; A request is immutable after atomic publication. Preload and check the entire
+; request before sending even its first command; never evaluate it as TTL code.
+run_id = ''
+plan_label = ''
+stop_path = ''
+current_step = 0
+last_completed = 0
+protocol_valid = 1
+fileopen protocol_handle request_path 0 1
+if protocol_handle = -1 then
+  protocol_valid = 0
+else
+  call read_field
+  strcompare field '1'
+  if result <> 0 then
+    protocol_valid = 0
+  endif
+  call read_field
+  strmatch field '^[0-9a-f]{32}$'
+  if result = 0 then
+    protocol_valid = 0
+  else
+    run_id = field
+    sprintf2 stop_path '%s\stop.%s' session_dir run_id
+  endif
+  call read_field
+  plan_label = field
+  call read_number
+  range_from = number
+  call read_number
+  range_to = number
+  if range_from > range_to then
+    protocol_valid = 0
+  endif
+  call read_number
+  step_count = number
+  if step_count > 100 then
+    protocol_valid = 0
+  endif
+  if protocol_valid = 1 then
+    previous_id = 0
+    for step_index 0 step_count-1
+      call read_number
+      step_ids[step_index] = number
+      if number <= previous_id then
+        protocol_valid = 0
+      endif
+      previous_id = number
+      call read_field
+      step_labels[step_index] = field
+      call read_field
+      step_commands[step_index] = field
+      call read_field
+      step_patterns[step_index] = field
+      ; strmatch maps both compile errors and nonmatches to zero. A wrapper
+      ; with an empty alternative MUST match if Oniguruma compiled it, so it
+      ; distinguishes malformed/unsupported syntax without sending anything.
+      sprintf2 regex_probe '(?:%s)|(?:)' field
+      strmatch '' regex_probe
+      if result = 0 then
+        protocol_valid = 0
+      endif
+      strmatch '' field
+      if result > 0 then
+        protocol_valid = 0
+      endif
+      call read_number
+      step_timeouts[step_index] = number
+      if number > 300 then
+        protocol_valid = 0
+      endif
+    next
+    if step_ids[0] <> range_from then
+      protocol_valid = 0
+    endif
+    if step_ids[step_count-1] <> range_to then
+      protocol_valid = 0
+    endif
+    filereadln protocol_handle extra_field
+    if result = 0 then
+      protocol_valid = 0
+    endif
+  endif
+  fileclose protocol_handle
+endif
+
+if protocol_valid = 0 then
+  state = 'error'
+  status_message = 'Invalid request. No commands were sent.'
+  goto finish_request
+endif
+
+; A requested handoff always restores the actual terminal window.
+showtt 1
+run_success = 1
+for step_index 0 step_count-1
+  testlink
+  if result <> 2 then
+    goto session_disconnected
+  endif
+  filesearch stop_path
+  if result = 1 then
+    state = 'stopped'
+    status_message = 'Stopped at a command boundary. Manual control returned.'
+    run_success = 0
+    break
+  endif
+  ; Refuse to operate if the user stopped logging during the manual session.
+  loginfo active_log
+  if result = -1 then
+    state = 'error'
+    status_message = 'Logging is inactive. No further command was sent.'
+    run_success = 0
+    break
+  endif
+  strcompare active_log log_path
+  if result <> 0 then
+    state = 'error'
+    status_message = 'The active log changed. No further command was sent.'
+    run_success = 0
+    break
+  endif
+
+  current_step = step_ids[step_index]
+  state = 'running'
+  status_message = step_labels[step_index]
+  call write_status
+  sprintf2 current_title '[AI step %d] %s' current_step plan_label
+  settitle current_title
+  call record_event
+  ; The command is visible locally even when the host has echo disabled.
+  sprintf2 command_marker '[AI command step %d] %s' current_step step_commands[step_index]
+  ; With plain=0, Tera Term logs this local display as well as host output.
+  dispstr command_marker #13#10
+
+  ; Clear only the macro receive buffer, never the terminal or its log. This
+  ; avoids satisfying the new command from an old prompt in macro scrollback.
+  flushrecv
+  timeout = step_timeouts[step_index]
+  mtimeout = 0
+  sendln step_commands[step_index]
+  waitregex step_patterns[step_index]
+  wait_result = result
+  testlink
+  if result <> 2 then
+    goto session_disconnected
+  endif
+  if wait_result <> 1 then
+    state = 'timeout'
+    status_message = 'Expected response was not observed. Stopped; inspect the terminal.'
+    run_success = 0
+    break
+  endif
+
+  last_completed = current_step
+  status_message = 'Expected response observed.'
+  call write_status
+  call record_event
+  ; A stop is a handoff between commands. It never interrupts a remote
+  ; operation, sends Ctrl+C, retries, or assumes a timed out command failed.
+  filesearch stop_path
+  if result = 1 then
+    state = 'stopped'
+    status_message = 'Stopped at a command boundary. Manual control returned.'
+    run_success = 0
     break
   endif
 next
 
-if chooser_ready = 0 then
-  messagebox 'Could not create a temporary folder.' 'Tera Term Auto Logger'
-  end
+if run_success = 1 then
+  state = 'completed'
+  status_message = 'Requested range completed. Manual control returned.'
 endif
 
-sprintf2 chooser_result '%s\result.txt' chooser_dir
-
-sprintf2 chooser_cmd 'powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "%s" -OutputPath "%s" -DefaultRoot "%s" -CategoriesPath "%s"' helper_path chooser_result default_dir categories_path
-exec chooser_cmd 'show' 1
-if result <> 0 then
-  if result <> 2 then
-    sprintf2 error_msg 'Log prompt failed. Check helper file:%s' helper_path
-    messagebox error_msg 'Tera Term Auto Logger'
-  endif
-  filedelete chooser_result
-  folderdelete chooser_dir
-  end
+:finish_request
+call write_status
+call manual_title
+call record_event
+strlen stop_path
+if result > 0 then
+  filedelete stop_path
 endif
+; Delete LAST: its existence serializes Submit against active execution.
+filedelete request_path
+goto resident_loop
 
-filesearch chooser_result
-if result = 0 then
-  folderdelete chooser_dir
-  end
+:session_disconnected
+state = 'disconnected'
+status_message = 'Connection ended. Start a new logger session before another run.'
+call write_status
+call append_event
+; Do not replay requests if this Tera Term window is later reconnected.
+filedelete request_path
+filedelete acknowledge_path
+strlen stop_path
+if result > 0 then
+  filedelete stop_path
 endif
-
-fileopen result_handle chooser_result 0 1
-if result_handle = -1 then
-  messagebox 'Could not read log prompt result.' 'Tera Term Auto Logger'
-  filedelete chooser_result
-  folderdelete chooser_dir
-  end
+testlink
+if result > 0 then
+  logclose
 endif
-
-filereadln result_handle log_path
-fileclose result_handle
-filedelete chooser_result
-folderdelete chooser_dir
-
-strlen log_path
-if result = 0 then
-  end
-endif
-
-; binary=0, append=0, plain=0, timestamp=0, hide-dialog=1,
-; include-screen-buffer=1, timestamp-type=0(local time)
-logopen log_path 0 0 0 0 1 1 0
-if result <> 0 then
-  sprintf2 error_msg 'Could not start logging:%s' log_path
-  messagebox error_msg 'Tera Term Auto Logger'
-  end
-endif
-
 end
+
+:cleanup_bootstrap
+filedelete bootstrap_result
+filedelete bootstrap_path
+folderdelete bootstrap_dir
+return
+
+:read_field
+filereadln protocol_handle field
+if result <> 0 then
+  protocol_valid = 0
+endif
+strlen field
+if result = 0 then
+  protocol_valid = 0
+endif
+if result > 384 then
+  protocol_valid = 0
+endif
+strmatch field '[\x00-\x1f\x7f-\x9f]'
+if result > 0 then
+  protocol_valid = 0
+endif
+return
+
+:read_number
+call read_field
+number = 0
+strmatch field '^[1-9][0-9]{0,9}$'
+if result = 0 then
+  protocol_valid = 0
+  return
+endif
+str2int number field
+if result = 0 then
+  protocol_valid = 0
+endif
+if number <= 0 then
+  protocol_valid = 0
+endif
+int2str canonical_number number
+strcompare canonical_number field
+if result <> 0 then
+  protocol_valid = 0
+endif
+return
+
+:write_status
+; filecreate truncates the previous status. CLI readers retry until all eight
+; complete lines, including END, are present; no stale trailing bytes survive.
+filecreate status_handle status_path
+if status_handle <> -1 then
+  filewriteln status_handle '1'
+  filewriteln status_handle state
+  filewriteln status_handle run_id
+  filewriteln status_handle plan_label
+  int2str numeric_text current_step
+  filewriteln status_handle numeric_text
+  int2str numeric_text last_completed
+  filewriteln status_handle numeric_text
+  filewriteln status_handle status_message
+  filewriteln status_handle 'END'
+  fileclose status_handle
+endif
+return
+
+:manual_title
+sprintf2 current_title '[MANUAL] %s' destination
+settitle current_title
+return
+
+:record_event
+call append_event
+sprintf2 event_marker '[TeraTerm Logger %s step %d] %s' state current_step status_message
+dispstr #13#10 event_marker #13#10
+return
+
+:append_event
+gettime event_time '%Y-%m-%dT%H:%M:%SZ' 'GMT'
+sprintf2 event_line '%s'#9'%s'#9'%s'#9'%d'#9'%s' event_time state run_id current_step status_message
+fileopen event_handle events_path 1
+if event_handle <> -1 then
+  filewriteln event_handle event_line
+  fileclose event_handle
+endif
+return

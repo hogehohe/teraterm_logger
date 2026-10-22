@@ -11,9 +11,9 @@ $ErrorActionPreference = 'Stop'
 
 $resolvedSource = (Resolve-Path -LiteralPath $SourcePath).Path
 $source = [System.IO.File]::ReadAllText($resolvedSource)
-$allocation = [regex]::Match($source, '(?ms)^chooser_ready = 0\r?\n.*?^next\r?$')
+$allocation = [regex]::Match($source, '(?ms)^bootstrap_ready = 0\r?\n.*?^next\r?$')
 if (-not $allocation.Success) { throw 'Could not extract the production allocation block.' }
-$cleanup = [regex]::Match($source, '(?m)^filedelete chooser_result\r?\nfolderdelete chooser_dir\r?$')
+$cleanup = [regex]::Match($source, '(?ms)^:cleanup_bootstrap\r?\n.*?^return\r?$')
 if (-not $cleanup.Success) { throw 'Could not extract the production cleanup block.' }
 
 $helperPath = Join-Path (Split-Path $resolvedSource -Parent) 'log_prompt.ps1'
@@ -62,7 +62,7 @@ try {
 temp_dir = '$runRoot'
 timestamp = 'same_second'
 $($allocation.Value)
-if chooser_ready = 0 then
+if bootstrap_ready = 0 then
   setexitcode 10
   end
 endif
@@ -71,7 +71,7 @@ if marker_handle = -1 then
   setexitcode 11
   end
 endif
-filewriteln marker_handle chooser_dir
+filewriteln marker_handle bootstrap_dir
 fileclose marker_handle
 setexitcode 0
 end
@@ -99,18 +99,27 @@ end
     for ($i = 0; $i -lt $ProcessCount; $i++) {
         $directory = $allocated[$i]
         $harness = @"
-chooser_dir = '$directory'
-sprintf2 chooser_result '%s\result.txt' chooser_dir
-fileopen result_handle chooser_result 0
+bootstrap_dir = '$directory'
+sprintf2 bootstrap_path '%s\init.txt' bootstrap_dir
+sprintf2 bootstrap_result '%s.result' bootstrap_path
+fileopen result_handle bootstrap_path 0
 if result_handle = -1 then
   setexitcode 12
   end
 endif
 filewriteln result_handle 'test log path'
 fileclose result_handle
-$($cleanup.Value)
+fileopen result_handle bootstrap_result 0
+if result_handle = -1 then
+  setexitcode 13
+  end
+endif
+filewriteln result_handle 'test result'
+fileclose result_handle
+call cleanup_bootstrap
 setexitcode result
 end
+$($cleanup.Value)
 "@
         $cleanupProcesses += Start-TestMacro -Name ('cleanup-{0:D2}' -f $i) -Text $harness
     }
