@@ -41,10 +41,10 @@ Tera Termの起動マクロとして使う場合、自分が使う`TERATERM.INI`
 
 ```ini
 StartupMacro=C:\tools\teraterm_logger\auto_log_prompt.ttl
-HostDialogOnStartup=off
+HostDialogOnStartup=on
 ```
 
-未接続のときはマクロから接続ダイアログを開きます。接続・ログインは普段どおりTera Termで行います。まず試すだけなら、設定ファイルを編集せず次のように起動できます。実際のインストール先とマクロの配置先に合わせてください。
+未接続のときはマクロから「新しい接続」ダイアログを開きます。接続・ログインは普段どおりTera Termで行います。ダイアログをキャンセルした場合もマクロは待機するので、「ファイル」→「新しい接続」から接続できます。接続が完了すると自動でログ取得を始めます。まず試すだけなら、設定ファイルを編集せず次のように起動できます。実際のインストール先とマクロの配置先に合わせてください。
 
 ```bat
 "C:\Program Files\teraterm5\ttermpro.exe" /M="C:\tools\teraterm_logger\auto_log_prompt.ttl"

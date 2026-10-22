@@ -32,10 +32,10 @@ En la sekcio `[Tera Term]` de via `TERATERM.INI`, agordu:
 
 ```ini
 StartupMacro=C:\tools\teraterm_logger\auto_log_prompt.ttl
-HostDialogOnStartup=off
+HostDialogOnStartup=on
 ```
 
-La ordinara loko por Tera Term 5 estas `%APPDATA%\teraterm5\TERATERM.INI`. Por portebla instalado aŭ aparta agorddosiero, uzu ties efektivan lokon. La makroo malfermas la konektan dialogon se necese. Konektiĝu kaj ensalutu kiel kutime; lasu la makroon funkcii dum la seanco.
+La ordinara loko por Tera Term 5 estas `%APPDATA%\teraterm5\TERATERM.INI`. Por portebla instalado aŭ aparta agorddosiero, uzu ties efektivan lokon. La makroo malfermas la konektan dialogon se necese. Post nuligo de la dialogo ĝi plu atendas; vi povas konektiĝi per la menuo File > New connection. Protokolado komenciĝas aŭtomate post konekto. Konektiĝu kaj ensalutu kiel kutime; lasu la makroon funkcii dum la seanco.
 
 Por provi sen ŝanĝi la agorddosieron:
 
