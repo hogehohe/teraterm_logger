@@ -50,7 +50,7 @@ function Get-UniqueFileName {
     $stem = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
     $extension = [System.IO.Path]::GetExtension($FileName)
 
-    for ($i = 1; $i -le 999; $i++) {
+    for ($i = 1; ; $i++) {
         $path = Join-Path $Folder $candidate
         if (-not [System.IO.File]::Exists($path)) {
             return $candidate
@@ -58,8 +58,6 @@ function Get-UniqueFileName {
 
         $candidate = '{0}_{1:D3}{2}' -f $stem, $i, $extension
     }
-
-    return $FileName
 }
 
 if (-not [System.IO.Directory]::Exists($DefaultRoot)) {
@@ -216,7 +214,8 @@ $okButton.Add_Click({
         }
     }
 
-    [System.IO.File]::WriteAllText($OutputPath, $fullPath + [Environment]::NewLine, [System.Text.Encoding]::Default)
+    # Tera Term 5 reads the result bytes as UTF-8; do not prefix the path with a BOM.
+    [System.IO.File]::WriteAllText($OutputPath, $fullPath + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
     $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
     $form.Close()
 })

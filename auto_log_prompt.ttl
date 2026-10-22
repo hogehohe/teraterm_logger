@@ -27,7 +27,24 @@ sprintf2 helper_path '%s\log_prompt.ps1' macro_dir
 sprintf2 categories_path '%s\log_categories.txt' macro_dir
 
 gettime timestamp '%Y%m%d_%H%M%S'
-sprintf2 chooser_result '%s\teraterm_logger_%s.txt' temp_dir timestamp
+chooser_ready = 0
+
+; Atomically reserve a separate result folder for each macro instance.
+for attempt 0 999
+  sprintf2 chooser_dir '%s\teraterm_logger_%s_%d' temp_dir timestamp attempt
+  foldercreate chooser_dir
+  if result = 0 then
+    chooser_ready = 1
+    break
+  endif
+next
+
+if chooser_ready = 0 then
+  messagebox 'Could not create a temporary folder.' 'Tera Term Auto Logger'
+  end
+endif
+
+sprintf2 chooser_result '%s\result.txt' chooser_dir
 
 sprintf2 chooser_cmd 'powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "%s" -OutputPath "%s" -DefaultRoot "%s" -CategoriesPath "%s"' helper_path chooser_result default_dir categories_path
 exec chooser_cmd 'show' 1
@@ -37,23 +54,28 @@ if result <> 0 then
     messagebox error_msg 'Tera Term Auto Logger'
   endif
   filedelete chooser_result
+  folderdelete chooser_dir
   end
 endif
 
 filesearch chooser_result
 if result = 0 then
+  folderdelete chooser_dir
   end
 endif
 
 fileopen result_handle chooser_result 0 1
 if result_handle = -1 then
   messagebox 'Could not read log prompt result.' 'Tera Term Auto Logger'
+  filedelete chooser_result
+  folderdelete chooser_dir
   end
 endif
 
 filereadln result_handle log_path
 fileclose result_handle
 filedelete chooser_result
+folderdelete chooser_dir
 
 strlen log_path
 if result = 0 then
