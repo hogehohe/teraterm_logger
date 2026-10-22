@@ -1,7 +1,7 @@
 ; Tera Term 5 resident logger and visible, bounded procedure runner.
 ; Device commands ONLY pass through sendln to this linked Tera Term window.
 ; The PowerShell helper allocates paths and publishes data, never connects to hosts.
-; Keep this macro running while working manually or handing a range to AI.
+; Keep this macro running while working manually or handing a range to Codex CLI.
 
 testlink
 if result <> 2 then
@@ -287,11 +287,11 @@ for step_index 0 step_count-1
   state = 'running'
   status_message = step_labels[step_index]
   call write_status
-  sprintf2 current_title '[AI step %d] %s' current_step plan_label
+  sprintf2 current_title '[Codex CLI step %d] %s' current_step plan_label
   settitle current_title
   call record_event
   ; The command is visible locally even when the host has echo disabled.
-  sprintf2 command_marker '[AI command step %d] %s' current_step step_commands[step_index]
+  sprintf2 command_marker '[Codex CLI command step %d] %s' current_step step_commands[step_index]
   ; With plain=0, Tera Term logs this local display as well as host output.
   dispstr command_marker #13#10
 

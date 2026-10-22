@@ -2,20 +2,30 @@
 
 [Esperanto](README.md) / 日本語
 
-**ログの名前と保存は自動にして、作業は自分もAIも同じTera Termで進める**ためのツールです。AIに任せる手順を番号で指定すると、開いているTera Termにコマンドを送り、指定範囲で止まります。
+**ログの名前と保存は自動にして、作業は自分もCodex CLIも同じTera Termで進める**ためのツールです。Codex CLIに任せる手順を番号で指定すると、開いているTera Termにコマンドを送り、指定範囲で止まります。
 
 - 接続後、保存先やファイル名を選ばずログ取得を開始します。
-- 手作業の入力とAIの実行内容・応答を、同じ画面とログで確認できます。
-- AIには開始手順と終了手順を両方指定します。範囲外の手順は実行しません。
-- Tera Termのタイトルと実行履歴で、手動操作中かAIの何番の手順かを確認できます。
+- 手作業の入力とCodex CLIに依頼した実行内容・応答を、同じ画面とログで確認できます。
+- Codex CLIには開始手順と終了手順を両方指定します。範囲外の手順は実行しません。
+- Tera Termのタイトルと実行履歴で、手動操作中かCodex CLIに依頼した何番の手順かを確認できます。
 
 対象はWindows / Tera Term 5 / Windows PowerShell 5.1です。
 
-設置後は普段どおりTera Termを開いて接続し、AIに次のように頼みます。
+設置後は普段どおりTera Termを開いて接続・ログインします。別途、ユーザーがこのリポジトリのフォルダでCodex CLIを起動し、手順書を示して次のように頼みます。
 
 > この手順書の2から3まで、このTera Termで実行して。3が終わったら止めて、自分に戻して。
 
-AIが対象セッションを確認し、必要な実行計画を作成・登録して、最後にどこまで進んだかを伝えます。JSONの作成とCLIの操作はAIが担当します。
+Codex CLIが対象セッションを確認し、必要な実行計画を作成・登録して、最後にどこまで進んだかを伝えます。JSONの作成と連携用PowerShellスクリプトの操作はCodex CLIが担当するので、ユーザーがJSONを手書きする必要はありません。
+
+| 担当 | 役割 |
+| --- | --- |
+| ユーザー | Tera Termで接続・ログインし、別途起動したCodex CLIへ手順書と実行範囲を伝える |
+| Codex CLI | 手順をJSONの実行計画にし、`teraterm_logger.ps1`へ登録して進捗・出力を確認する |
+| `teraterm_logger.ps1` | ローカルの連携窓口として、セッション確認・依頼登録・状態確認を受け付ける |
+| 常駐Tera Termマクロ | 既存のTera Termで`sendln`によりコマンドを送信し、指定範囲で止まる |
+| Tera Term | 接続先との通信、画面表示、端末ログの記録を行う |
+
+Codex CLIの導入・起動はユーザー側で行います。このツールが提供するのは、Codex CLIの依頼を受け付けるPowerShell連携スクリプトと、Tera Term上で実行する常駐マクロです。
 
 ## 設置と起動
 
@@ -40,7 +50,7 @@ HostDialogOnStartup=off
 "C:\Program Files\teraterm5\ttermpro.exe" /M="C:\tools\teraterm_logger\auto_log_prompt.ttl"
 ```
 
-マクロは接続後も常駐します。常駐中のマクロを終了するとAIからの実行依頼を受け取れなくなります。
+マクロは接続後も常駐します。常駐中のマクロを終了するとCodex CLIからの実行依頼を受け取れなくなります。
 
 ## ログはどこに保存されるか
 
@@ -60,20 +70,20 @@ Documents\TeraTermLogs\yyyy-MM-dd\timestamp_host_unique.log
 }
 ```
 
-次に起動するセッションから反映されます。設定・セッション状態・手順履歴は`%LOCALAPPDATA%\teraterm_logger`に保存します。環境変数`TERATERM_LOGGER_HOME`で別の状態フォルダを指定できます。Tera TermとCLIの両方を同じ設定で起動してください。CLIだけの`-StateRoot`指定も可能です。
+次に起動するセッションから反映されます。設定・セッション状態・手順履歴は`%LOCALAPPDATA%\teraterm_logger`に保存します。環境変数`TERATERM_LOGGER_HOME`で別の状態フォルダを指定できます。Tera Termと、Codex CLIから呼び出す`teraterm_logger.ps1`の両方で同じ設定を使ってください。`teraterm_logger.ps1`だけの`-StateRoot`指定も可能です。
 
-## AIに手順の一部を任せる
+## Codex CLIに手順の一部を任せる
 
-詳しい引き継ぎ方法は[AIとの作業手順](docs/ai-workflow.md)にあります。
+詳しい引き継ぎ方法は[Codex CLIとの作業手順](docs/codex-cli-workflow.md)にあります。
 
 1. Tera Termで対象機器に接続し、ログインと現在の状態を確認します。
-2. AIと手順書を確認し、実行するコマンドと停止位置を決めます。
-3. AIがJSON形式の実行計画を作り、対象セッションと番号の範囲を指定して依頼します。
+2. 別途Codex CLIを起動し、手順書と実行する範囲・停止位置を伝えます。
+3. Codex CLIがJSON形式の実行計画を作り、`teraterm_logger.ps1`で対象セッションと番号の範囲を指定して依頼します。
 4. コマンドと応答がTera Termに表示されます。指定範囲を終えると手動操作に戻ります。
 
-### AI連携用のコマンド
+### Codex CLIが使う連携コマンド
 
-以下はAIが使う連携インターフェースです。リポジトリのフォルダから、まず接続中のセッションを確認します。
+以下はCodex CLIが呼び出す`teraterm_logger.ps1`のコマンド例です。Codex CLI自体の起動コマンドではありません。リポジトリのフォルダから、まず接続中のセッションを確認します。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\teraterm_logger.ps1 -Action Sessions
@@ -94,7 +104,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\teraterm_logger.ps1 -A
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\teraterm_logger.ps1 -Action Stop -SessionId <session-id>
 ```
 
-`Run`は実行依頼を登録します。完了確認には`Status`を使います。実際のコマンド送信は、そのセッションに接続されたTera Termマクロの`sendln`で行います。AI用に別のSSH接続を作る仕組みはありません。
+`Run`は実行依頼を登録します。完了確認には`Status`を使います。実際のコマンド送信は、そのセッションに接続されたTera Termマクロの`sendln`で行います。通信とログ記録は同じTera Termが担当します。
 
 ## 停止と引き継ぎの注意
 
@@ -102,7 +112,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\teraterm_logger.ps1 -A
 - 今動いているコマンドを止めたい場合は、Tera Term上で対象機器に適した操作をしてください。たとえば`Ctrl+C`が有効な機器では、それを使えます。
 - タイムアウトや切断時は後続コマンドを送りません。送信済みコマンドの処理結果は不明として扱い、画面とログを確認します。自動再実行はしません。
 - `expect`への一致は応答の区切りを示します。コマンドの成功や設定の正しさを保証するものではありません。
-- AIがコマンドを実行している間は、同じ端末へ並行して入力しないでください。結果を確認してから操作を引き継ぎます。
+- Codex CLIに依頼した手順を実行している間は、同じ端末へ並行して入力しないでください。結果を確認してから操作を引き継ぎます。
 
 タイムアウトやエラー後は、新しい`Run`を受け付けません。Tera Termで実際の処理結果と現在のプロンプトを確認したあと、次の操作で待機状態へ戻せます。コマンドの再送は行わず、ログは同じセッションで継続します。その後、必要な範囲を改めて指定して依頼します。
 
