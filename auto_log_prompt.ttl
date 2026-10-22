@@ -5,13 +5,10 @@
 
 testlink
 if result = 0 then
-  ; Establish the link before opening the connection dialog, so window closure
-  ; is handled by the same wait loop as an already linked startup macro.
-  connect '/DS'
-endif
-testlink
-if result = 1 then
-  ; The macro is linked. Request File > New connection directly;
+  ; Standalone macro launch: create a Tera Term window first.
+  connect '/ES'
+elseif result = 1 then
+  ; A startup macro is already linked. Request File > New connection directly;
   ; reconnecting through connect '/ES' can leave startup waiting without a dialog.
   showtt 1
   callmenu 50110
